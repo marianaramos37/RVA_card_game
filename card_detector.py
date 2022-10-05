@@ -17,6 +17,7 @@ def compare_contours(captured_image, cards_corners, cards_normal):
     original = np.array(cards_corners, np.float32)
     dst = np.array([[0, 0], [0, height - 1], [width - 1, height - 1], [width - 1, 0]], np.float32)
 
+    similaritys = []
     # For every rotation (horizontal or vertical)
     for i in range(2):
 
@@ -34,7 +35,7 @@ def compare_contours(captured_image, cards_corners, cards_normal):
         for card in cards_normal:
             card_of_the_database = binarize_image(cv2.imread(card))
             similarity = compute_similarity(card_frontal_view, card_of_the_database)
-            if similarity < 15000:
+            if similarity > 0.88:
                 return card
 
 
@@ -67,11 +68,11 @@ def compute_similarity(image1, image2):  # Can we use any openCV function ?
     '''
 
     # Using norm():
-    '''
+    
     height, width = image1.shape
     errorL2 = cv2.norm( image1, image2, cv2.NORM_L2 )
     similarity = 1 - errorL2 / ( height * width )
-    '''
+    
 
     # By pixel, too slow:
     '''
@@ -93,7 +94,7 @@ def compute_similarity(image1, image2):  # Can we use any openCV function ?
     '''
 
     # Histogram
-    
+    '''
     histogram1 = cv2.calcHist([image1], [0], None, [256], [0, 256])
     histogram2 = cv2.calcHist([image2], [0], None, [256], [0, 256])
     i = 0
@@ -102,7 +103,7 @@ def compute_similarity(image1, image2):  # Can we use any openCV function ?
         c1+=(histogram1[i]-histogram2[i])**2
         i+= 1
     similarity = c1**(1 / 2)
-
+    '''
     return similarity
     
 
@@ -155,7 +156,7 @@ def binarize_image(original_image):
 def test_on_image():
     cards_normal = glob.glob('./images/cards_normal/*')
 
-    test_image = cv2.imread('./images/test.jpg')
+    test_image = cv2.imread('./images/test_image2.png')
     test_image = cv2.resize(test_image,(500,500))
 
     # Binarize 
@@ -180,7 +181,7 @@ def test_on_image():
         original = compare_contours(binary_image, get_corners(card_contour), cards_normal)
 
         if original != None:
-            cv2.putText(test_image,original[-14:],(x-150,y-80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2, cv2.LINE_AA)
+            cv2.putText(test_image,original[-14:],(x-100,y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1, cv2.LINE_AA)
 
         card_names.append(original)
 
