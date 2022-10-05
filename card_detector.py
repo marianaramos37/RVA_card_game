@@ -17,7 +17,7 @@ def compare_contours(captured_image, cards_corners, cards_normal):
     original = np.array(cards_corners, np.float32)
     dst = np.array([[0, 0], [0, height - 1], [width - 1, height - 1], [width - 1, 0]], np.float32)
 
-    # Rotate and compare
+    # For every rotation (horizontal or vertical)
     for i in range(2):
 
         # Rotate real image
@@ -34,7 +34,7 @@ def compare_contours(captured_image, cards_corners, cards_normal):
         for card in cards_normal:
             card_of_the_database = binarize_image(cv2.imread(card))
             similarity = compute_similarity(card_frontal_view, card_of_the_database)
-            if similarity > 1.6e+09:
+            if similarity < 15000:
                 return card
 
 
@@ -51,8 +51,9 @@ def get_corners(contour):
 def compute_similarity(image1, image2):  # Can we use any openCV function ?
 
     # Template matching:
-    
+    '''
     similarity = cv2.matchTemplate(image1,image2,cv2.TM_CCOEFF)
+    '''
 
     # Feature matching:
     '''
@@ -90,6 +91,17 @@ def compute_similarity(image1, image2):  # Can we use any openCV function ?
     '''
     similarity = ssim(image1,image2, channel_axis = False)  
     '''
+
+    # Histogram
+    
+    histogram1 = cv2.calcHist([image1], [0], None, [256], [0, 256])
+    histogram2 = cv2.calcHist([image2], [0], None, [256], [0, 256])
+    i = 0
+    c1=0
+    while i<len(histogram1) and i<len(histogram2):
+        c1+=(histogram1[i]-histogram2[i])**2
+        i+= 1
+    similarity = c1**(1 / 2)
 
     return similarity
     
@@ -145,8 +157,6 @@ def test_on_image():
 
     test_image = cv2.imread('./images/test.jpg')
     test_image = cv2.resize(test_image,(500,500))
-    
-
 
     # Binarize 
     binary_image = binarize_image(test_image)
@@ -160,13 +170,18 @@ def test_on_image():
 
     for card_contour in contours:
         corners = get_corners(card_contour)
+        x=0
+        y=0
         for corner in corners:
             x,y = corner.ravel()
             cv2.circle(test_image, (x,y), 1, (0,0,255), cv2.LINE_AA)
             
-        # Compute similarity and return names of each cards card
-    
+        # Compute similarity and return name of each card
         original = compare_contours(binary_image, get_corners(card_contour), cards_normal)
+
+        if original != None:
+            cv2.putText(test_image,original[-14:],(x-150,y-80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2, cv2.LINE_AA)
+
         card_names.append(original)
 
     print(card_names)
