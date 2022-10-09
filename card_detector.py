@@ -207,6 +207,8 @@ def main():
     card_team2_player1 = ""
     card_team2_player2 = ""
     number_of_cards_on_table = 0
+    points_team_1 = 0
+    points_team_2 = 0
 
     while True:
         _, frame = cap.read()
@@ -219,36 +221,48 @@ def main():
         num_cards_on_table = np.count_nonzero(cnt_is_card==1)
         
         cv2.putText(frame,"Trunfo: " + trunfo,(5,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame,"Team 1: " + trunfo,(5,40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame,"Team 2: " + trunfo,(5,60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame,"Team 1" ,(300,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame,str(points_team_1) + " points",(300,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame,"Team 2" ,(500,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(frame,str(points_team_2) + " points",(500,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2, cv2.LINE_AA)
+
 
         for c in range(len(cnts_sort)):
             if(cnt_is_card[c]==1):
 
                 corners = get_corners(cnts_sort[c])
-                    
+                
+                # Put colors on countours of teams:
                 team = game_logic.find_team(corners)
                 if(team=="team1"):
-                    cv2.drawContours(frame, cnts_sort[c], -1, (255, 0, 0), 3)  
+                    cv2.drawContours(frame, cnts_sort[c], -1, (0, 0, 255), 2)  
                 else:
-                    cv2.drawContours(frame, cnts_sort[c], -1, (0, 255, 0), 2)
+                    cv2.drawContours(frame, cnts_sort[c], -1, (255, 0, 0), 2)
 
                 # Compute similarity and return name of each card
                 original = compare_contours(binary_frame, corners, cards_normal, cards_db_preprocessed)
 
+                if c==0: card_team1_player1 = original
+                elif c==1: card_team2_player1 = original
+                elif c==2: card_team1_player2 = original
+                elif c==3: card_team2_player2 = original
+
                 if original != None:
                     cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
 
-                if num_cards_on_table==1:
-                    assistir = original[20:][:-4]
+        if num_cards_on_table==0:
+            cv2.putText(frame,"You can start the game",(5,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
 
-                if num_cards_on_table!=4:
-                    cv2.putText(frame,"Assistir: " + assistir,(5,80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
+        if num_cards_on_table==1:
+            assistir = original[20:][:-4]
 
-                if num_cards_on_table==4:
-                    #winning_team, winning_team_points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
-                    cv2.putText(frame,"Terminou a ronda",(5,80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
+        if 0 < num_cards_on_table !=4:
+            cv2.putText(frame,"Assist: " + assistir,(5,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
 
+        if num_cards_on_table==4:
+            winning_team, points_team_1, points_team_2 = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
+            cv2.putText(frame,"Finished round",(5,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
+            
         cv2.imshow('frame', frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
