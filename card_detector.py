@@ -188,12 +188,6 @@ def find_marker(thresh_image, template):
 
 def main():
 
-    # Get camara image
-    cap = cv2.VideoCapture(0)
-
-    # Calibrate camera:
-    ret, cameraMatrix, dist, rvecs, tvecs = calibrate_camera()
-
     # Get trunfo
     trunfo = ""
     args = sys.argv[1:]
@@ -205,6 +199,12 @@ def main():
         print("USAGE: card_detector.py [TRUNFO]")
         print("Where  [TRUNFO] can be one of the following: 'copas', 'paus', 'ouros', 'espadas'")
         return 
+
+    # Get camara image
+    cap = cv2.VideoCapture(0)
+
+    # Calibrate camera:
+    ret, cameraMatrix, dist, rvecs, tvecs = calibrate_camera()
 
     # Pre-process database cards:
     cards_normal = glob.glob('images/cards_simple/*.jpg')
@@ -249,10 +249,10 @@ def main():
         #cv2.rectangle(frame, max_loc, bottom_right, 255, 5)
 
         cv2.putText(frame,"TRUNFO: " + trunfo,(20,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,"TEAM 1" ,(300,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,str(points_team_1) + " POINTS",(300,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,"TEAM 2" ,(500,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,str(points_team_2) + " POINTS",(500,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"TEAM 1" ,(300,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,str(points_team_1) + " POINTS",(300,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"TEAM 2" ,(500,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,str(points_team_2) + " POINTS",(500,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
         cv2.putText(frame,"Press Q to QUIT the game",(15,h-15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 153), 1, cv2.FONT_HERSHEY_SIMPLEX                 )
 
         for c in range(len(cnts_sort)):
@@ -286,9 +286,8 @@ def main():
             assistir = original[20:][:-4]
             cv2.putText(frame,"Card to assist: " + assistir,(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
-
         if num_cards_on_table==4:
-            winning_team, points_team_1, points_team_2 = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
+            winning_team, points_team_1,points_team_2 = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
             cv2.putText(frame,"Finished round",(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
         
 
