@@ -8,7 +8,7 @@ def load_game_logic(trunfo,assistir,card_t1_p1,card_t1_p2,card_t2_p1,card_t2_p2)
     points_team1 = get_points(card_t1_p1)+get_points(card_t1_p2)
     points_team2 = get_points(card_t2_p1)+get_points(card_t2_p2)
 
-    naipe = assistir[:4] 
+    naipe = assistir[-4:] 
 
     if(points_team1 > points_team2):
         winning_team = "team1"
@@ -30,18 +30,18 @@ def load_game_logic(trunfo,assistir,card_t1_p1,card_t1_p2,card_t2_p1,card_t2_p2)
 
     return winning_team, points_team1, points_team2
 
-def find_team(card_corners):
-    if len(card_corners)==4:
-
+# Find team: Horizontal cards are team 2 vertical are team 1
+def find_team(card_corners): 
         # top left point: min(x+y)
         tl = sorted(card_corners, key=lambda p: (p[0][0]) + (p[0][1]))[0] 
         # top right point: max(x-y)
         tr = sorted(card_corners, key=lambda p: (p[0][0]) - (p[0][1]))[-1]
 
-        corners_rest = np.delete(card_corners, np.where(card_corners == tl), axis=0)
         corners_rest = np.delete(card_corners, np.where(card_corners == tr), axis=0)
 
-        bl = sorted(corners_rest, key=lambda p: (p[0][0]))[0] 
+        bl = tl
+        if len(corners_rest)>0:
+            bl = sorted(corners_rest, key=lambda p: (p[0][0]))[0] 
         
         # Card is vertical
         if (bl[0][1] - tl[0][1]) > (tr[0][0] - tl[0][0]):

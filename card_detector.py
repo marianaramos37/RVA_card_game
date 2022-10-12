@@ -9,8 +9,8 @@ import game_logic
 
 
 NUM_CARDS = 4
-CARD_MAX_AREA = 18000
-CARD_MIN_AREA = 6000
+CARD_MAX_AREA = 24000
+CARD_MIN_AREA = 3000
 
 ####### Compare captured contours with card of the database
 
@@ -38,7 +38,9 @@ def compare_contours(captured_image, cards_corners, cards_db_names, cards_db):
             original = np.array([cards_corners[3], cards_corners[0], cards_corners[1], cards_corners[2]], np.float32)
 
         # Compute homography
-        matrix = cv2.getPerspectiveTransform(original, dst)
+        if(len(original)==4):
+            matrix = cv2.getPerspectiveTransform(original, dst)
+        else: return
 
         # Generate frontal view from perspective
         card_frontal_view = cv2.warpPerspective(captured_image, matrix, (width, height))    
@@ -52,10 +54,12 @@ def compare_contours(captured_image, cards_corners, cards_db_names, cards_db):
         
     return best_match
 
+
 ####### Get the corners of a card through its countor 
 
 def get_corners(contour):
     return cv2.approxPolyDP(contour, 0.1*cv2.arcLength(contour, True), True)
+
 
 
 ####### Compare 2 images of the same size
@@ -130,10 +134,12 @@ def binarize_image(original_image):
     img_w, img_h = np.shape(original_image)[:2]
 
     bkg_level = gray_scale_image[int(img_h/100)][int(img_w/2)]
-    thresh_level = bkg_level + 130 
+    thresh_level = bkg_level + 100
 
     _, binary_image = cv2.threshold(gray_scale_image, thresh_level, 255, cv2.THRESH_BINARY)
     return binary_image
+
+
 
 # Finds all card-sized contours in a thresholded camera image. Returns the number of cards, and a list of card contours sorted from largest to smallest.
 
@@ -159,17 +165,34 @@ def find_cards(thresh_image):
         peri = cv2.arcLength(cnts_sort[i],True)
         approx = cv2.approxPolyDP(cnts_sort[i],0.01*peri,True)
         
-        if ((size < CARD_MAX_AREA) and (size > CARD_MIN_AREA)
-            and (hier_sort[i][3] == -1) and (len(approx) == 4)):
+        if ((size < CARD_MAX_AREA) and ( size > CARD_MIN_AREA) and (hier_sort[i][3] == -1) and (len(approx) == 4)):
             cnt_is_card[i] = 1
-
+        
     return cnts_sort, cnt_is_card
 
 
 
+def find_marker(thresh_image, template):
+    result = cv2.matchTemplate(thresh_image, template, cv2.TM_CCOEFF)
+
+    print(result)
+    
+    h, w = template.shape
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+    bottom_right = (max_loc[0]+w, max_loc[1]+h)
+
+    return bottom_right, max_loc
+
 ####### Video capture main loop
 
 def main():
+
+    # Get camara image
+    cap = cv2.VideoCapture(0)
+
+    # Calibrate camera:
+    ret, cameraMatrix, dist, rvecs, tvecs = calibrate_camera()
 
     # Get trunfo
     trunfo = ""
@@ -183,10 +206,7 @@ def main():
         print("Where  [TRUNFO] can be one of the following: 'copas', 'paus', 'ouros', 'espadas'")
         return 
 
-    cap = cv2.VideoCapture(1)
-
     # Pre-process database cards:
-
     cards_normal = glob.glob('images/cards_simple/*.jpg')
     cards_db_preprocessed = []
 
@@ -196,8 +216,9 @@ def main():
         _, binary_image = cv2.threshold(gray_scale_image, 127, 255, cv2.THRESH_BINARY)
         cards_db_preprocessed.append(binary_image)
 
-    # Calibrate camera:
-    # ret, cameraMatrix = calibrate_camera()
+    # Pre-process marker image:
+    marker = cv2.imread('images/marker.png')
+    marker = binarize_image(marker)
     
     # Game Logic:
 
@@ -212,6 +233,10 @@ def main():
 
     while True:
         _, frame = cap.read()
+        h, w = np.shape(frame)[:2]
+
+        cv2.rectangle(frame, (10,10), (w-15, 85), (255,255,255), -1)
+        cv2.rectangle(frame, (10,10), (w-15, 85), (0, 0, 0), 2)
 
         # Binarize 
         binary_frame = binarize_image(frame)
@@ -220,16 +245,18 @@ def main():
         
         num_cards_on_table = np.count_nonzero(cnt_is_card==1)
         
-        cv2.putText(frame,"Trunfo: " + trunfo,(5,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame,"Team 1" ,(300,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame,str(points_team_1) + " points",(300,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame,"Team 2" ,(500,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2, cv2.LINE_AA)
-        cv2.putText(frame,str(points_team_2) + " points",(500,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2, cv2.LINE_AA)
+        #bottom_right, max_loc = find_marker(binary_frame,marker)
+        #cv2.rectangle(frame, max_loc, bottom_right, 255, 5)
 
+        cv2.putText(frame,"TRUNFO: " + trunfo,(20,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"TEAM 1" ,(300,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,str(points_team_1) + " POINTS",(300,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"TEAM 2" ,(500,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,str(points_team_2) + " POINTS",(500,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"Press Q to QUIT the game",(15,h-15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 153), 1, cv2.FONT_HERSHEY_SIMPLEX                 )
 
         for c in range(len(cnts_sort)):
             if(cnt_is_card[c]==1):
-
                 corners = get_corners(cnts_sort[c])
                 
                 # Put colors on countours of teams:
@@ -240,6 +267,7 @@ def main():
                     cv2.drawContours(frame, cnts_sort[c], -1, (255, 0, 0), 2)
 
                 # Compute similarity and return name of each card
+                
                 original = compare_contours(binary_frame, corners, cards_normal, cards_db_preprocessed)
 
                 if c==0: card_team1_player1 = original
@@ -248,22 +276,23 @@ def main():
                 elif c==3: card_team2_player2 = original
 
                 if original != None:
-                    cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
-
+                    cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+                
+        
         if num_cards_on_table==0:
-            cv2.putText(frame,"You can start the game",(5,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
+            cv2.putText(frame,"You can start to play" + assistir,(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
-        if num_cards_on_table==1:
+        if num_cards_on_table==1 and original != None:
             assistir = original[20:][:-4]
+            cv2.putText(frame,"Card to assist: " + assistir,(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
-        if 0 < num_cards_on_table !=4:
-            cv2.putText(frame,"Assist: " + assistir,(5,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
 
         if num_cards_on_table==4:
             winning_team, points_team_1, points_team_2 = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
-            cv2.putText(frame,"Finished round",(5,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
-            
-        cv2.imshow('frame', frame)
+            cv2.putText(frame,"Finished round",(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+        
+
+        cv2.imshow('Sueca Game Assistant', frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
