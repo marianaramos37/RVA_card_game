@@ -287,7 +287,7 @@ def main():
             cv2.putText(frame,"Card to assist: " + assistir,(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
         if num_cards_on_table==4:
-            winning_team, points_team_1,points_team_2 = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
+            winning_team, points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
             cv2.putText(frame,"Finished round",(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
         
 

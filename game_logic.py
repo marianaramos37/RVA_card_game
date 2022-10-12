@@ -7,8 +7,7 @@ def load_game_logic(trunfo,assistir,card_t1_p1,card_t1_p2,card_t2_p1,card_t2_p2)
     usedTrunfo = False
     cards_played = [card_t1_p1, card_t1_p2, card_t2_p1, card_t2_p2]
     cards_to_consider = np.zeros(4, dtype=int)
-    pointst1 = get_points(card_t1_p1)+get_points(card_t1_p2)
-    pointst2 = get_points(card_t2_p1)+get_points(card_t2_p2)
+    points = get_points(card_t1_p1)+get_points(card_t1_p2)+get_points(card_t2_p1)+get_points(card_t2_p2)
     suit = getSuit(assistir)
     
     if (getSuit(card_t1_p1) == trunfo):
@@ -41,7 +40,7 @@ def load_game_logic(trunfo,assistir,card_t1_p1,card_t1_p2,card_t2_p1,card_t2_p2)
             if (i < 2): winning_team == "team1"
             else: winning_team == "team2"
 
-    return winning_team, pointst1,pointst2
+    return winning_team, points
 
 # Find team: Horizontal cards are team 2 vertical are team 1
 def find_team(card_corners): 
