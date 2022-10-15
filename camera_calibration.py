@@ -32,6 +32,7 @@ def calibrate_camera():
     for image in images:
 
         img = cv.imread(image)
+        h, w = np.shape(img)[:2]
 
         gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
@@ -45,10 +46,17 @@ def calibrate_camera():
             corners2 = cv.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
             imgpoints.append(corners)
 
+            cv.rectangle(img, (10,10), (w-15, 85), (255,255,255), -1)
+            cv.rectangle(img, (10,10), (w-15, 85), (0, 0, 0), 2)
+            cv.putText(img,"Calibrating the camera...",(20,40), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv.FONT_HERSHEY_SIMPLEX)
+            cv.putText(img,"This might take a minute.",(20,65), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv.FONT_HERSHEY_SIMPLEX)
+
             # Draw and display the corners
             cv.drawChessboardCorners(img, chessboardSize, corners2, ret)
             cv.imshow('img', img)
-            cv.waitKey(25)
+            cv.waitKey(70)
+
+
 
 
     cv.destroyAllWindows()
@@ -58,7 +66,7 @@ def calibrate_camera():
 
     ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, frameSize, None, None)
 
-    return ret, cameraMatrix
+    return ret, cameraMatrix, dist, rvecs, tvecs
 
     ############## UNDISTORTION #####################################################
     '''
