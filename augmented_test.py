@@ -53,7 +53,8 @@ class Effects(object):
               
             # project 3D points to image plane
             cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
-            rvecs, tvecs = cv2.solvePnPRansac(objp, corners, mtx, dist)[:-2]
+            ret , rvecs, tvecs = cv2.solvePnPRansac(objp, corners, mtx, dist)[:3]
+
             imgpts, _ = cv2.projectPoints(axis, rvecs, tvecs, mtx, dist)
   
             # draw cube
@@ -94,6 +95,7 @@ effects = Effects()
 #draw cube
 image=cv2.imread('cali1.jpg')
 img=effects.render(image)
+cv2.imshow('mat',img)
 k = cv2.waitKey(0)
 if k == ord('s'):
     cv2.imwrite('badabada.png', img)
