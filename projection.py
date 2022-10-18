@@ -12,7 +12,7 @@ axis = np.float32([[0.5,0,0], [0,0.5,0], [0,0,-0.5]]).reshape(-1,3) # (x,y,z)
 cube = np.float32([[0,0,0], [0,0.5,0], [0.5,0.5,0], [0.5,0,0],
                    [0,0,-0.5],[0,0.5,-0.5],[0.5,0.5,-0.5],[0.5,0,-0.5] ])
                    
-def draw_trophy(frame, corners, mtx, dist):
+def draw_trophy(frame, corners, mtx, dist): # esta é a matriz dos parametros intrinsecos
 
     # mtx = [[focal_length, 0, center[0]],
     #        [0, focal_length, center[1]],
@@ -25,7 +25,7 @@ def draw_trophy(frame, corners, mtx, dist):
     if(len(corners)>0):
         corners2 = cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
 
-        # Find the rotation and translation vectors.
+        # Find the rotation and translation vectors. # esta é a matriz parametros extrinsecos
         _, rvecs, tvecs,_ = cv.solvePnPRansac(objectPoints=objp, imagePoints=corners2, cameraMatrix=mtx, distCoeffs=dist)
 
         # project 3D points to image plane

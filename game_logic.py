@@ -37,8 +37,8 @@ def load_game_logic(trunfo,assistir,card_t1_p1,card_t1_p2,card_t2_p1,card_t2_p2)
     for i in range(4):
         if (cards_to_consider[i] == 1 and (bestCard == "" or isBetter(cards_played[i], bestCard))):
             bestCard = cards_played[i]
-            if (i < 2): winning_team == "team1"
-            else: winning_team == "team2"
+            if (i < 2): winning_team = "team1"
+            else: winning_team = "team2"
 
     return winning_team, points
 

@@ -24,7 +24,7 @@ def compare_contours(captured_image, cards_corners, cards_db_names, cards_db):
     original = np.array(cards_corners, np.float32)
     dst = np.array([[0, 0], [0, height - 1], [width - 1, height - 1], [width - 1, 0]], np.float32)
 
-    less_difference = 230
+    less_difference = 150000
     best_match = ""
 
     # For every rotation (horizontal or vertical)
@@ -44,7 +44,7 @@ def compare_contours(captured_image, cards_corners, cards_db_names, cards_db):
         else: return
 
         # Generate frontal view from perspective
-        card_frontal_view = cv2.warpPerspective(captured_image, matrix, (width, height))    
+        card_frontal_view = cv2.warpPerspective(captured_image, matrix, (width, height))
 
         # Compare images with cards on the database
         for c in range(len(cards_db_names)):
@@ -52,9 +52,37 @@ def compare_contours(captured_image, cards_corners, cards_db_names, cards_db):
             if similarity < less_difference:
                 less_difference = similarity
                 best_match = cards_db_names[c]
+                diff_img = cv2.absdiff(card_frontal_view, cards_db[c])
+                #cv2.imshow("diff",diff_img)
         
     return best_match
 
+
+
+def compare_contours_superpositions(captured_image, cards_db_names, cards_db):
+    sift = cv2.xfeatures2d.SIFT_create() 
+    index_params = dict(algorithm = 0, trees = 5) 
+    search_params = dict() 
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+    kp_grayframe, desc_grayframe = sift.detectAndCompute(captured_image, None) 
+
+    best_match = 0
+    best_card = ""
+    for c in range(len(cards_db_names)):
+        kp_image, desc_image =sift.detectAndCompute(cards_db[c], None)  
+        matches= flann.knnMatch(desc_image, desc_grayframe, k=2) 
+
+        good_points=[] 
+        for m, n in matches: 
+            if(m.distance < 0.6*n.distance): 
+                good_points.append(m) 
+
+        if(len(good_points)>best_match): 
+            best_match=len(good_points)
+            best_card = cards_db_names[c]
+    print(best_card)
+    return best_card
 
 ####### Get the corners of a card through its countor 
 
@@ -65,7 +93,7 @@ def get_corners(contour):
 
 ####### Compare 2 images of the same size
 
-def compute_similarity(image1, image2):  # Can we use any openCV function ?
+def compute_similarity(image1, image2):
 
     # Template matching:
     '''
@@ -155,7 +183,7 @@ def find_cards(thresh_image):
     
     cnts_sort = [] # List of sorted contours
     hier_sort = []
-    cnt_is_card = np.zeros(len(cnts),dtype=int) # [0,1,0,1,1,...] where 1 is card 
+    cnt_is_card = np.zeros(len(cnts),dtype=int) # [0,1,0,1,1,...] where 1 if is a card and 2 if there are two cards superposition
 
     for i in index_sort:
         cnts_sort.append(cnts[i])
@@ -166,6 +194,9 @@ def find_cards(thresh_image):
         peri = cv2.arcLength(cnts_sort[i],True)
         approx = cv2.approxPolyDP(cnts_sort[i],0.01*peri,True)
         
+        if (size > CARD_MIN_AREA) and (len(approx) == 8 or len(approx) == 6):
+            cnt_is_card[i] = 2
+
         if ((size < CARD_MAX_AREA) and ( size > CARD_MIN_AREA) and (hier_sort[i][3] == -1) and (len(approx) == 4)):
             cnt_is_card[i] = 1
         
@@ -186,7 +217,7 @@ def find_marker(thresh_image, template):
             if(len(original)==4):
                 matrix = cv2.getPerspectiveTransform(original, dst)
             else: return
-            marker_frontal_view = cv2.warpPerspective(thresh_image, matrix, (width, height)) 
+            marker_frontal_view = cv2.warpPerspective(thresh_image, matrix, (width, height)) # TODO: Falta rodar
             similarity = compute_similarity(marker_frontal_view, template)
             if similarity >= 51000:
                 return corners
@@ -215,7 +246,7 @@ def main():
     ret, cameraMatrix, dist, rvecs, tvecs = calibrate_camera()
 
     # Pre-process database cards:
-    cards_normal = glob.glob('images/cards_simple/*.jpg')
+    cards_normal = glob.glob('images/cards_normal/*.png')
     cards_db_preprocessed = []
 
     for card_name in cards_normal:
@@ -265,26 +296,35 @@ def main():
         cv2.putText(frame,"Press Q to QUIT the game",(15,h-15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 153), 1, cv2.FONT_HERSHEY_SIMPLEX                 )
 
         for c in range(len(cnts_sort)):
-            if(cnt_is_card[c]==1):
+            original = ""
+            corners=[[]]
+
+            if(cnt_is_card[c]==1): # is just a card
                 corners = get_corners(cnts_sort[c])
                 
                 # Find card team:
                 team = game_logic.find_team(corners)
+                if team=="team1":
+                    cv2.drawContours(frame, cnts_sort[c], -1, (0, 0, 255), 2)  
+                elif team=="team2":
+                    cv2.drawContours(frame, cnts_sort[c], -1, (255, 0, 0), 2)
 
                 # Compute similarity and return name of each card
                 original = compare_contours(binary_frame, corners, cards_normal, cards_db_preprocessed)
 
-                if c==0: card_team1_player1 = original
-                elif c==1: card_team2_player1 = original
-                elif c==2: card_team1_player2 = original
-                elif c==3: card_team2_player2 = original
+            if(cnt_is_card[c]==2): # 2 cards superpositioned
+                cv2.drawContours(frame, cnts_sort[c], -1, (0, 255, 255), 2)  
+                original = compare_contours_superpositions(binary_frame, cards_normal, cards_db_preprocessed)
 
-                if original is not None and original != "":
-                    if(team=="team1"):
-                        cv2.drawContours(frame, cnts_sort[c], -1, (0, 0, 255), 2)  
-                    else:
-                        cv2.drawContours(frame, cnts_sort[c], -1, (255, 0, 0), 2)
-                    cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+            if c==0: card_team1_player1 = original
+            elif c==1: card_team2_player1 = original
+            elif c==2: card_team1_player2 = original
+            elif c==3: card_team2_player2 = original
+
+            if original is not None and original != "" and len(corners[0])>0:
+                print(original)
+                print(corners)
+                cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.FONT_HERSHEY_SIMPLEX)
                 
         
         if num_cards_on_table==0:
@@ -296,14 +336,17 @@ def main():
             cv2.putText(frame,"Card to assist: " + assistir,(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
         if num_cards_on_table==4:
-            winning_team, points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
-            print(winning_team) # ERRO
-            if winning_team=="team1" and new_round==True:
-                points_team_1 += points
-                new_round = False
-            elif winning_team=="team2" and new_round==True: 
-                points_team_2 += points
-                new_round = False
+            if card_team1_player1 is not None and card_team1_player2 is not None and card_team2_player1 is not None and card_team2_player2 is not None:
+                winning_team, points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
+                print(winning_team)
+                print(points) # ERRO
+
+                if winning_team=="team1" and new_round==True:
+                    points_team_1 += points
+                    new_round = False
+                elif winning_team=="team2" and new_round==True: 
+                    points_team_2 += points
+                    new_round = False
             cv2.putText(frame,"Finished round",(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
         
 
