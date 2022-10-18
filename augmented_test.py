@@ -43,7 +43,7 @@ class Effects(object):
         objp[:,:2] = np.mgrid[0:9,0:6].T.reshape(-1,2)
   
         axis = np.float32([[0,0,0], [0,3,0], [3,3,0], [3,0,0],
-                           [0,0,-3],[0,3,-3],[3,3,-3],[3,0,-3] ])
+                           [0,0,-6],[0,3,-6],[3,3,-6],[3,0,-6] ])
   
         # find grid corners in image
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -58,8 +58,8 @@ class Effects(object):
             imgpts, _ = cv2.projectPoints(axis, rvecs, tvecs, mtx, dist)
   
             # draw cube
-            imgage2=self._draw_cube(image, imgpts)
-            return imgage2
+            imgage3,image2=self._draw_cube(image, imgpts)
+            return imgage3,image2
   
     def _draw_cube(self, img, imgpts):
         imgpts = np.int32(imgpts).reshape(-1,2)
@@ -70,10 +70,19 @@ class Effects(object):
         # draw pillars
         for i,j in zip(range(4),range(4,8)):
             cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]),(255),3)
-  
+        #0 4
+        #3 7
+
+        pts1=np.array([[403,390],[0,390],[403,0],[0,0]])
+        pts2=np.array([[imgpts[0]],[imgpts[3]],[imgpts[4]],[imgpts[7]]])
+        image2=cv2.imread('images/trunfos.png')
+        
+        h, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC,5.0)
+        im1Reg = cv2.warpPerspective(image2, h, (403, 390))
+        
         # draw roof
-        imgage3=cv2.drawContours(img, [imgpts[4:]],-1,(200,150,10),3)
-        return imgage3
+        imgage3=cv2.drawContours(img, [imgpts[4:]],-1,(200,150,10),-3)
+        return imgage3,im1Reg
 
 
 
@@ -93,9 +102,10 @@ effects = Effects()
    
 
 #draw cube
-image=cv2.imread('cali1.jpg')
-img=effects.render(image)
-cv2.imshow('mat',img)
+image=cv2.imread('images/chessboard_calibration/cali16.jpg')
+img3,img2=effects.render(image)
+cv2.imshow('mat1',img3)
+cv2.imshow('mat2',img2)
 k = cv2.waitKey(0)
 if k == ord('s'):
     cv2.imwrite('badabada.png', img)
