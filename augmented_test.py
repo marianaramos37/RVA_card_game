@@ -77,12 +77,35 @@ class Effects(object):
         pts2=np.array([[imgpts[0]],[imgpts[3]],[imgpts[4]],[imgpts[7]]])
         image2=cv2.imread('images/trunfos.png')
         
-        h, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC,5.0)
-        im1Reg = cv2.warpPerspective(image2, h, (403, 390))
+        h, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC,2.0)
+        im1Reg = cv2.warpPerspective(image2, h, (640, 360))
+        print(img.shape)
         
         # draw roof
         imgage3=cv2.drawContours(img, [imgpts[4:]],-1,(200,150,10),-3)
         return imgage3,im1Reg
+
+    def _merge_images(self,image1,image2):
+        # Load two images
+        img1 = image1
+        img2 = image2
+        # I want to put logo on top-left corner, So I create a ROI
+        rows,cols,channels = img2.shape
+        roi = img1[0:rows, 0:cols]
+        # Now create a mask of logo and create its inverse mask also
+        img2gray = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
+        ret, mask = cv2.threshold(img2gray, 10, 255, cv2.THRESH_BINARY)
+        mask_inv = cv2.bitwise_not(mask)
+        # Now black-out the area of logo in ROI
+        img1_bg = cv2.bitwise_and(roi,roi,mask = mask_inv)
+        # Take only region of logo from logo image.
+        img2_fg = cv2.bitwise_and(img2,img2,mask = mask)
+        # Put logo in ROI and modify the main image
+        dst = cv2.add(img1_bg,img2_fg)
+        img1[0:rows, 0:cols ] = dst
+        cv2.imshow('res',img1)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 
@@ -104,7 +127,8 @@ effects = Effects()
 #draw cube
 image=cv2.imread('images/chessboard_calibration/cali16.jpg')
 img3,img2=effects.render(image)
-cv2.imshow('mat1',img3)
+res=effects._merge_images(img3,img2)
+cv2.imshow('mat1',res)
 cv2.imshow('mat2',img2)
 k = cv2.waitKey(0)
 if k == ord('s'):
