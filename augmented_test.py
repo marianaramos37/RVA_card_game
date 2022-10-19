@@ -12,7 +12,7 @@ from camera_calibration import calibrate_camera
 class Webcam:
   
     def __init__(self):
-        self.video_capture = cv2.VideoCapture(0)
+        self.video_capture = cv2.VideoCapture(1)
         self.current_frame = self.video_capture.read()[1]
           
     # create thread for capturing images

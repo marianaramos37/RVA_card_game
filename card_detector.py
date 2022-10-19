@@ -11,7 +11,7 @@ from projection import draw_trophy
 
 NUM_CARDS = 4
 CARD_MAX_AREA = 20000
-CARD_MIN_AREA = 3000
+CARD_MIN_AREA = 2000
 
 ####### Compare captured contours with card of the database
 
@@ -194,10 +194,10 @@ def find_cards(thresh_image):
         peri = cv2.arcLength(cnts_sort[i],True)
         approx = cv2.approxPolyDP(cnts_sort[i],0.01*peri,True)
         
-        if (size > CARD_MIN_AREA) and (len(approx) == 8 or len(approx) == 6):
-            cnt_is_card[i] = 2
+        #if (size > CARD_MIN_AREA) and (len(approx) == 8 or len(approx) == 6):
+            #cnt_is_card[i] = 2
 
-        if ((size < CARD_MAX_AREA) and ( size > CARD_MIN_AREA) and (hier_sort[i][3] == -1) and (len(approx) == 4)):
+        if ( (size < CARD_MAX_AREA) and ( size > CARD_MIN_AREA) and (hier_sort[i][3] == -1) and (len(approx) == 4)):
             cnt_is_card[i] = 1
         
     return cnts_sort, cnt_is_card
@@ -206,21 +206,29 @@ def find_cards(thresh_image):
 
 def find_marker(thresh_image, template):
     height, width = template.shape[:2]
-    cnts,hier = cv2.findContours(thresh_image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    cnts,_ = cv2.findContours(thresh_image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     for i in range(len(cnts)):
         peri = cv2.arcLength(cnts[i],True)
         approx = cv2.approxPolyDP(cnts[i],0.01*peri,True)
         if(len(approx)) == 4:
-            corners = get_corners(cnts[i])
-            original = np.array(corners, np.float32)
-            dst = np.array([[0, 0], [0, height - 1], [width - 1, height - 1], [width - 1, 0]], np.float32)
-            if(len(original)==4):
-                matrix = cv2.getPerspectiveTransform(original, dst)
-            else: return
-            marker_frontal_view = cv2.warpPerspective(thresh_image, matrix, (width, height)) # TODO: Falta rodar
-            similarity = compute_similarity(marker_frontal_view, template)
-            if similarity >= 51000:
-                return corners
+            (x, y, w, h) = cv2.boundingRect(approx)
+            if  (0.8<=(float(w)/h)<=1.2):
+                corners = get_corners(cnts[i])
+
+                original = np.array(corners, np.float32)
+                dst = np.array([[0, 0], [0, height - 1], [width - 1, height - 1], [width - 1, 0]], np.float32)
+
+                if(len(original)==4):
+                    matrix = cv2.getPerspectiveTransform(original, dst)
+                else: return
+
+                marker_frontal_view = cv2.warpPerspective(thresh_image, matrix, (width, height)) # TODO: Falta rodar
+
+                similarity = compute_similarity(marker_frontal_view, template)
+                if similarity >= 51000:
+                    return corners
+
+    return []
 
 
 ####### Video capture main loop
@@ -240,7 +248,7 @@ def main():
         return 
 
     # Get camara image
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     # Calibrate camera:
     ret, cameraMatrix, dist, rvecs, tvecs = calibrate_camera()
@@ -275,25 +283,26 @@ def main():
         _, frame = cap.read()
         h, w = np.shape(frame)[:2]
 
-        cv2.rectangle(frame, (10,10), (w-15, 85), (255,255,255), -1)
-        cv2.rectangle(frame, (10,10), (w-15, 85), (0, 0, 0), 2)
+        cv2.rectangle(frame, (10,h-8), (w-15, h-85), (255,255,255), -1)
+        cv2.rectangle(frame, (10,h-8), (w-15, h-85), (0, 0, 0), 2)
 
         # Binarize frame
         binary_frame = binarize_image(frame)
-
-        # Find cards
-        cnts_sort, cnt_is_card = find_cards(binary_frame)
-        num_cards_on_table = np.count_nonzero(cnt_is_card==1)
         
         # Find and recognize marker
         marker_corners = find_marker(binary_frame,marker)
+        draw_trophy(frame, marker_corners, cameraMatrix, dist)
 
-        cv2.putText(frame,"TRUNFO: " + trunfo,(20,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,"TEAM 1" ,(300,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,str(points_team_1) + " POINTS",(300,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,"TEAM 2" ,(500,40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,str(points_team_2) + " POINTS",(500,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
-        cv2.putText(frame,"Press Q to QUIT the game",(15,h-15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 153), 1, cv2.FONT_HERSHEY_SIMPLEX                 )
+        # Find cards
+        cnts_sort, cnt_is_card = find_cards(binary_frame)
+        num_cards_on_table = np.count_nonzero(cnt_is_card==1) 
+
+        cv2.putText(frame,"TRUNFO: " + trunfo,(20,h-60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"TEAM 1" ,(300,h-60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,str(points_team_1) + " POINTS",(300,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 153), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"TEAM 2" ,(500,h-60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,str(points_team_2) + " POINTS",(500,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
+        cv2.putText(frame,"Press Q to QUIT the game",(20,h-13), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 153), 1, cv2.FONT_HERSHEY_SIMPLEX                 )
 
         for c in range(len(cnts_sort)):
             original = ""
@@ -301,20 +310,20 @@ def main():
 
             if(cnt_is_card[c]==1): # is just a card
                 corners = get_corners(cnts_sort[c])
-                
+
                 # Find card team:
                 team = game_logic.find_team(corners)
                 if team=="team1":
-                    cv2.drawContours(frame, cnts_sort[c], -1, (0, 0, 255), 2)  
+                    cv2.drawContours(frame, cnts_sort, c, (0, 0, 255), 2)  
                 elif team=="team2":
-                    cv2.drawContours(frame, cnts_sort[c], -1, (255, 0, 0), 2)
+                    cv2.drawContours(frame, cnts_sort, c, (255, 0, 0), 2)
 
                 # Compute similarity and return name of each card
                 original = compare_contours(binary_frame, corners, cards_normal, cards_db_preprocessed)
 
-            if(cnt_is_card[c]==2): # 2 cards superpositioned
-                cv2.drawContours(frame, cnts_sort[c], -1, (0, 255, 255), 2)  
-                original = compare_contours_superpositions(binary_frame, cards_normal, cards_db_preprocessed)
+            #if(cnt_is_card[c]==2): # 2 cards superpositioned
+                #cv2.drawContours(frame, cnts_sort[c], -1, (0, 255, 255), 2)  
+                #original = compare_contours_superpositions(binary_frame, cards_normal, cards_db_preprocessed)
 
             if c==0: card_team1_player1 = original
             elif c==1: card_team2_player1 = original
@@ -322,25 +331,20 @@ def main():
             elif c==3: card_team2_player2 = original
 
             if original is not None and original != "" and len(corners[0])>0:
-                print(original)
-                print(corners)
                 cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.FONT_HERSHEY_SIMPLEX)
                 
         
         if num_cards_on_table==0:
-            cv2.putText(frame,"You can start to play" + assistir,(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+            cv2.putText(frame,"You can start to play" + assistir,(20,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
         if num_cards_on_table==1 and original != None:
             new_round = True
             assistir = original[20:][:-4]
-            cv2.putText(frame,"Card to assist: " + assistir,(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+            cv2.putText(frame,"Card to assist: " + assistir,(20,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
         if num_cards_on_table==4:
             if card_team1_player1 is not None and card_team1_player2 is not None and card_team2_player1 is not None and card_team2_player2 is not None:
                 winning_team, points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
-                print(winning_team)
-                print(points) # ERRO
-
                 if winning_team=="team1" and new_round==True:
                     points_team_1 += points
                     new_round = False

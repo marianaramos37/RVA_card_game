@@ -27,7 +27,7 @@ def calibrate_camera():
     imgpoints = [] # 2d points in image plane.
 
 
-    images = glob.glob('images/chessboard_calibration/*.jpg')
+    images = glob.glob('images/calibration2/*.jpg')
 
     for image in images:
 

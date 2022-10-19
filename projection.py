@@ -4,29 +4,33 @@ import glob
 
 criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-objp = np.zeros((1*4,3), np.float32)
+objp = np.zeros((4,3), np.float32) # 4 points of dimension 3 (x,y,z)
 objp[:,:2] = np.mgrid[0:2,0:2].T.reshape(-1,2)
 
-axis = np.float32([[0.5,0,0], [0,0.5,0], [0,0,-0.5]]).reshape(-1,3) # (x,y,z)
+print(objp)
+
+axis = np.float32([[0,0.5,0]]).reshape(-1,3) # (x,y,z)
 
 cube = np.float32([[0,0,0], [0,0.5,0], [0.5,0.5,0], [0.5,0,0],
-                   [0,0,-0.5],[0,0.5,-0.5],[0.5,0.5,-0.5],[0.5,0,-0.5] ])
+                   [0,0,-0.5],[0,0.5,-0.5],[0.5,0.5,-0.5],[0,0,-0.5] ])
                    
 def draw_trophy(frame, corners, mtx, dist): # esta é a matriz dos parametros intrinsecos
+
+    #mtx = np.array([[666.179, 0., 320.], [0., 697.0839, 240.], [0., 0., 1.]], dtype=np.float32)
 
     # mtx = [[focal_length, 0, center[0]],
     #        [0, focal_length, center[1]],
     #        [0, 0, 1]]
     
-    corners = np.array(corners, np.float32)
+    if(corners is not None and len(corners)==4):
+        corners = np.array(corners, np.float32)
 
-    gray = cv.cvtColor(frame,cv.COLOR_BGR2GRAY)
+        gray = cv.cvtColor(frame,cv.COLOR_BGR2GRAY)
 
-    if(len(corners)>0):
-        corners2 = cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+        corners2 = cv.cornerSubPix(gray,corners,(5,5),(-1,-1),criteria)
 
-        # Find the rotation and translation vectors. # esta é a matriz parametros extrinsecos
-        _, rvecs, tvecs,_ = cv.solvePnPRansac(objectPoints=objp, imagePoints=corners2, cameraMatrix=mtx, distCoeffs=dist)
+        # Find the rotation and translation vectors. Esta é a matriz parametros extrinsecos
+        _, rvecs, tvecs = cv.solvePnP(objp, corners2, mtx, dist)
 
         # project 3D points to image plane
         imgpts, _ = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
@@ -40,9 +44,13 @@ def draw_trophy(frame, corners, mtx, dist): # esta é a matriz dos parametros in
         cv.circle(frame,tuple(corners[2].ravel()),1,[0,255,255],2)
         cv.circle(frame,tuple(corners[3].ravel()),1,[0,255,255],2)
 
+        h, w = np.shape(frame)[:2]
+        print(mtx)
+        cv.circle(frame,(320,240),1,[0,0,255],2)
+
+
         corner = tuple(corners[0].ravel())
         cv.line(frame, corner, tuple(imgpts[0].ravel()), (255,0,0), 2)
-        cv.line(frame, corner, tuple(imgpts[1].ravel()), (0,255,0), 2)
-        cv.line(frame, corner, tuple(imgpts[2].ravel()), (0,0,255), 2)
+    
 
         return
