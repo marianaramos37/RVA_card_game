@@ -59,13 +59,15 @@ def compare_contours(captured_image, cards_corners, cards_db_names, cards_db):
 
 
 
+####### Compare captured contours of superpositioned cards with cards of the database
+
 def compare_contours_superpositions(captured_image, cards_db_names, cards_db):
     sift = cv2.xfeatures2d.SIFT_create() 
     index_params = dict(algorithm = 0, trees = 5) 
     search_params = dict() 
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
-    kp_grayframe, desc_grayframe = sift.detectAndCompute(captured_image, None) 
+    _, desc_grayframe = sift.detectAndCompute(captured_image, None) 
 
     best_match = 0
     best_card = ""
@@ -83,6 +85,8 @@ def compare_contours_superpositions(captured_image, cards_db_names, cards_db):
             best_card = cards_db_names[c]
     print(best_card)
     return best_card
+
+
 
 ####### Get the corners of a card through its countor 
 
@@ -121,7 +125,7 @@ def compute_similarity(image1, image2):
     # Using abs diff
     
     diff_img = cv2.absdiff(image1, image2)
-    similarity = int(np.sum(diff_img)/255)
+    diff = int(np.sum(diff_img)/255)
     
     # By pixel, too slow:
     '''
@@ -153,7 +157,8 @@ def compute_similarity(image1, image2):
         i+= 1
     similarity = c1**(1 / 2)
     '''
-    return similarity
+    return diff
+
 
 
 ####### Binarize an image
@@ -194,7 +199,7 @@ def find_cards(thresh_image):
         peri = cv2.arcLength(cnts_sort[i],True)
         approx = cv2.approxPolyDP(cnts_sort[i],0.01*peri,True)
         
-        #if (size > CARD_MIN_AREA) and (len(approx) == 8 or len(approx) == 6):
+        #if (size > CARD_MIN_AREA) and (len(approx) == 8 or len(approx) == 6): # Two cards overlapping
             #cnt_is_card[i] = 2
 
         if ( (size < CARD_MAX_AREA) and ( size > CARD_MIN_AREA) and (hier_sort[i][3] == -1) and (len(approx) == 4)):
@@ -203,6 +208,7 @@ def find_cards(thresh_image):
     return cnts_sort, cnt_is_card
 
 
+#### Find the marker
 
 def find_marker(thresh_image, template):
     height, width = template.shape[:2]
@@ -269,7 +275,6 @@ def main():
     _, marker = cv2.threshold(gray_scale_marker, 100, 255, cv2.THRESH_BINARY)
 
     # Game Logic:
-
     assistir = ""
     card_team1_player1 = ""
     card_team1_player2 = ""
@@ -313,15 +318,17 @@ def main():
 
                 # Find card team:
                 team = game_logic.find_team(corners)
+                
                 if team=="team1":
                     cv2.drawContours(frame, cnts_sort, c, (0, 0, 255), 2)  
                 elif team=="team2":
                     cv2.drawContours(frame, cnts_sort, c, (255, 0, 0), 2)
-
+                    
                 # Compute similarity and return name of each card
                 original = compare_contours(binary_frame, corners, cards_normal, cards_db_preprocessed)
 
-            #if(cnt_is_card[c]==2): # 2 cards superpositioned
+            # Two cards overlapping
+            #if(cnt_is_card[c]==2):
                 #cv2.drawContours(frame, cnts_sort[c], -1, (0, 255, 255), 2)  
                 #original = compare_contours_superpositions(binary_frame, cards_normal, cards_db_preprocessed)
 
@@ -362,5 +369,4 @@ def main():
     cap.release()
     cv2.destroyAllWindows()
 
-#test_on_image()
 main()
