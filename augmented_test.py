@@ -28,13 +28,12 @@ class Webcam:
         return self.current_frame
 
 
+ # load calibration data
+_, mtx, dist, _, _ = calibrate_camera()
 
 class Effects(object):
     
     def render(self, image):
-  
-        # load calibration data
-        _, mtx, dist, _, _ = calibrate_camera()
   
         # set up criteria, object points and axis
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -48,7 +47,8 @@ class Effects(object):
         # find grid corners in image
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCorners(gray, (9,6), None)
-  
+
+        print(ret)
         if ret == True:
               
             # project 3D points to image plane
@@ -82,8 +82,8 @@ class Effects(object):
         print(img.shape)
         
         # draw roof
-        imgage3=cv2.drawContours(img, [imgpts[4:]],-1,(200,150,10),-3)
-        return imgage3,im1Reg
+        img=cv2.drawContours(img, [imgpts[4:]],-1,(200,150,10),-3)
+        return img,im1Reg
 
     def _merge_images(self,image1,image2):
         # Load two images
@@ -125,14 +125,13 @@ effects = Effects()
    
 
 #draw cube
-image=cv2.imread('images/chessboard_calibration/cali16.jpg')
-img3,img2=effects.render(image)
-res=effects._merge_images(img3,img2)
-cv2.imshow('mat1',res)
-cv2.imshow('mat2',img2)
-k = cv2.waitKey(0)
-if k == ord('s'):
-    cv2.imwrite('badabada.png', img)
+
+cap = cv2.VideoCapture(0)
+while True:
+    _, image = cap.read()
+    img3,img2=effects.render(image)
+    res=effects._merge_images(img3,img2)
+    k = cv2.waitKey(0)
                     
 # show the scene
 cv2.waitKey(100)

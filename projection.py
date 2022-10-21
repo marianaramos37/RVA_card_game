@@ -4,53 +4,60 @@ import glob
 
 criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-objp = np.zeros((4,3), np.float32) # 4 points of dimension 3 (x,y,z)
-objp[:,:2] = np.mgrid[0:2,0:2].T.reshape(-1,2)
+objp = np.array([[0.,0.,0.],[1.,0.,0.],[1.,1.,0.],[0.,1.,0.]])
 
-print(objp)
+point1 = np.float32([[0.5,0.5,-1.5]])
+point2 = np.float32([[0.5,0.5,0]])
 
-axis = np.float32([[0,0.5,0]]).reshape(-1,3) # (x,y,z)
-
-cube = np.float32([[0,0,0], [0,0.5,0], [0.5,0.5,0], [0.5,0,0],
-                   [0,0,-0.5],[0,0.5,-0.5],[0.5,0.5,-0.5],[0,0,-0.5] ])
+cube = np.float32([[0.2,0.2,-0.5], [0.8,0.2,-0.5], [0.8,0.8,-0.5], [0.2,0.8,-0.5],
+                   [0.2,0.2,-1],[0.8,0.2,-1],[0.8,0.8,-1],[0.2,0.8,-1]])
                    
 def draw_trophy(frame, corners, mtx, dist): # esta é a matriz dos parametros intrinsecos
 
-    #mtx = np.array([[666.179, 0., 320.], [0., 697.0839, 240.], [0., 0., 1.]], dtype=np.float32)
-
-    # mtx = [[focal_length, 0, center[0]],
-    #        [0, focal_length, center[1]],
-    #        [0, 0, 1]]
+    h, w = np.shape(frame)[:2]
     
     if(corners is not None and len(corners)==4):
         corners = np.array(corners, np.float32)
 
         gray = cv.cvtColor(frame,cv.COLOR_BGR2GRAY)
-
-        corners2 = cv.cornerSubPix(gray,corners,(5,5),(-1,-1),criteria)
+        corners2 = cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
 
         # Find the rotation and translation vectors. Esta é a matriz parametros extrinsecos
-        _, rvecs, tvecs = cv.solvePnP(objp, corners2, mtx, dist)
+        _, rvecs, tvecs, _ = cv.solvePnPRansac(objp, corners2, mtx, dist, flags=cv.SOLVEPNP_P3P)
 
         # project 3D points to image plane
-        imgpts, _ = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
+        imgpts_cube, _ = cv.projectPoints(cube, rvecs, tvecs, mtx, dist)
+        imgpts_cube = np.int32(imgpts_cube).reshape(-1,2)
 
-        imgpts = np.int32(imgpts).reshape(-1,2)
+        imgpts_point1, _ = cv.projectPoints(point1, rvecs, tvecs, mtx, dist)
+        imgpts_point1 = np.int32(imgpts_point1).reshape(-1,2)
+
+        imgpts_point2, _ = cv.projectPoints(point2, rvecs, tvecs, mtx, dist)
+        imgpts_point2 = np.int32(imgpts_point2).reshape(-1,2)
 
         corners = np.array(corners, np.int32)
 
-        cv.circle(frame,tuple(corners[0].ravel()),1,[0,255,255],2)
-        cv.circle(frame,tuple(corners[1].ravel()),1,[0,255,255],2)
-        cv.circle(frame,tuple(corners[2].ravel()),1,[0,255,255],2)
-        cv.circle(frame,tuple(corners[3].ravel()),1,[0,255,255],2)
+        cv.line(frame, tuple(imgpts_point2[0]), tuple(imgpts_cube[0]),(4,139,171),6)
+        cv.line(frame, tuple(imgpts_point2[0]), tuple(imgpts_cube[1]),(4,139,171),6)
+        cv.line(frame, tuple(imgpts_point2[0]), tuple(imgpts_cube[2]),(4,139,171),6)
+        cv.line(frame, tuple(imgpts_point2[0]), tuple(imgpts_cube[3]),(4,139,171),6)
 
-        h, w = np.shape(frame)[:2]
-        print(mtx)
-        cv.circle(frame,(320,240),1,[0,0,255],2)
+        # cube floor
+        cv.drawContours(frame, [imgpts_cube[:4]],-1,(5,180,221),-3)
+        cv.drawContours(frame, [imgpts_cube[:4]],-1,(4,139,171),3)
 
+        # draw pillars
+        for i,j in zip(range(4),range(4,8)):
+            cv.line(frame, tuple(imgpts_cube[i]), tuple(imgpts_cube[j]),(4,139,171),6)
 
-        corner = tuple(corners[0].ravel())
-        cv.line(frame, corner, tuple(imgpts[0].ravel()), (255,0,0), 2)
-    
+        # draw top
+        cv.drawContours(frame, [imgpts_cube[4:]],-1,(5,180,221),-3)
+        cv.drawContours(frame, [imgpts_cube[4:]],-1,(4,139,171),3)
 
+        cv.line(frame, tuple(imgpts_point1[0]), tuple(imgpts_cube[4]),(4,139,171),6)
+        cv.line(frame, tuple(imgpts_point1[0]), tuple(imgpts_cube[5]),(4,139,171),6)
+        cv.line(frame, tuple(imgpts_point1[0]), tuple(imgpts_cube[6]),(4,139,171),6)
+        cv.line(frame, tuple(imgpts_point1[0]), tuple(imgpts_cube[7]),(4,139,171),6)
+
+       
         return

@@ -19,7 +19,7 @@ def calibrate_camera():
     imgpoints = [] # 2d points in image plane
 
     # Load chessboard images
-    images = glob.glob('images/chessboard_calibration/*.jpg') 
+    images = glob.glob('images/calibration2/*.jpg') 
 
     # Termination criteria
     criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
