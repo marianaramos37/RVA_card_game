@@ -1,3 +1,4 @@
+from time import sleep
 import cv2
 import numpy as np
 import glob
@@ -283,8 +284,11 @@ def main():
     points_team_1 = 0
     points_team_2 = 0
     new_round = True
+    game_end=False
+    champion=" "
 
     while True:
+        sleep(1)
         _, frame = cap.read()
         h, w = np.shape(frame)[:2]
 
@@ -307,58 +311,69 @@ def main():
         cv2.putText(frame,"TEAM 2" ,(500,h-60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
         cv2.putText(frame,str(points_team_2) + " POINTS",(500,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (102, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX                 )
         cv2.putText(frame,"Press Q to QUIT the game",(20,h-13), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 153), 1, cv2.FONT_HERSHEY_SIMPLEX                 )
+        if(game_end==False):
+            for c in range(len(cnts_sort)):
+                original = ""
+                corners=[[]]
 
-        for c in range(len(cnts_sort)):
-            original = ""
-            corners=[[]]
+                if(cnt_is_card[c]==1): # is just a card
+                    corners = get_corners(cnts_sort[c])
 
-            if(cnt_is_card[c]==1): # is just a card
-                corners = get_corners(cnts_sort[c])
-
-                # Find card team:
-                team = game_logic.find_team(corners)
-                
-                if team=="team1":
-                    cv2.drawContours(frame, cnts_sort, c, (0, 0, 255), 2)  
-                elif team=="team2":
-                    cv2.drawContours(frame, cnts_sort, c, (255, 0, 0), 2)
+                    # Find card team:
+                    team = game_logic.find_team(corners)
                     
-                # Compute similarity and return name of each card
-                original = compare_contours(binary_frame, corners, cards_normal, cards_db_preprocessed)
+                    if team=="team1":
+                        cv2.drawContours(frame, cnts_sort, c, (0, 0, 255), 2)  
+                    elif team=="team2":
+                        cv2.drawContours(frame, cnts_sort, c, (255, 0, 0), 2)
+                        
+                    # Compute similarity and return name of each card
+                    original = compare_contours(binary_frame, corners, cards_normal, cards_db_preprocessed)
 
-            # Two cards overlapping
-            #if(cnt_is_card[c]==2):
-                #cv2.drawContours(frame, cnts_sort[c], -1, (0, 255, 255), 2)  
-                #original = compare_contours_superpositions(binary_frame, cards_normal, cards_db_preprocessed)
+                # Two cards overlapping
+                #if(cnt_is_card[c]==2):
+                    #cv2.drawContours(frame, cnts_sort[c], -1, (0, 255, 255), 2)  
+                    #original = compare_contours_superpositions(binary_frame, cards_normal, cards_db_preprocessed)
 
-            if c==0: card_team1_player1 = original
-            elif c==1: card_team2_player1 = original
-            elif c==2: card_team1_player2 = original
-            elif c==3: card_team2_player2 = original
+                if c==0: card_team1_player1 = original
+                elif c==1: card_team2_player1 = original
+                elif c==2: card_team1_player2 = original
+                elif c==3: card_team2_player2 = original
 
-            if original is not None and original != "" and len(corners[0])>0:
-                cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.FONT_HERSHEY_SIMPLEX)
-                
+                if original is not None and original != "" and len(corners[0])>0:
+                    cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.FONT_HERSHEY_SIMPLEX)
+                    
         
-        if num_cards_on_table==0:
-            cv2.putText(frame,"You can start to play" + assistir,(20,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+            if num_cards_on_table==0:
+                cv2.putText(frame,"You can start to play" + assistir,(20,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
-        if num_cards_on_table==1 and original != None:
-            new_round = True
-            assistir = original[20:][:-4]
-            cv2.putText(frame,"Card to assist: " + assistir,(20,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+            if num_cards_on_table==1 and original != None:
+                new_round = True
+                assistir = original[20:][:-4]
+                cv2.putText(frame,"Card to assist: " + assistir,(20,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
-        if num_cards_on_table==4:
-            if card_team1_player1 is not None and card_team1_player2 is not None and card_team2_player1 is not None and card_team2_player2 is not None:
-                winning_team, points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
-                if winning_team=="team1" and new_round==True:
-                    points_team_1 += points
-                    new_round = False
-                elif winning_team=="team2" and new_round==True: 
-                    points_team_2 += points
-                    new_round = False
-            cv2.putText(frame,"Finished round",(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
-            draw_trophy(frame, marker_corners, cameraMatrix, dist, winning_team)
+            if num_cards_on_table==4:
+                if card_team1_player1 is not None and card_team1_player2 is not None and card_team2_player1 is not None and card_team2_player2 is not None:
+                    winning_team, points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
+                    if winning_team=="team1" and new_round==True:
+                        points_team_1 += points
+                        new_round = False
+                    elif winning_team=="team2" and new_round==True: 
+                        points_team_2 += points
+                        new_round = False
+                    
+                    if points_team_1>=20:
+                        champion="team1"
+                        game_end=True
+
+                    if points_team_2>=20:
+                        champion="team2"
+                        game_end=True
+
+                    cv2.putText(frame,"Finished round",(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+
+        if(game_end==True):
+            draw_trophy(frame, marker_corners, cameraMatrix, dist, champion)
         
 
         cv2.imshow('Sueca Game Assistant', frame)

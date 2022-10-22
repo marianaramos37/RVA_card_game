@@ -16,7 +16,6 @@ def draw_trophy(frame, corners, mtx, dist, winning_team): # esta é a matriz dos
     h, w = np.shape(frame)[:2]
     
     if(corners is not None and len(corners)==4):
-        print('hey')
         img_winner = cv.imread('images/trunfos.png')
         if (winning_team == 'team1'):
             img_winner = cv.imread('images/Team1Winner.png')

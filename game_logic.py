@@ -96,6 +96,7 @@ def isBetter(cardA, cardB):
     return False
     
 def getValue(card):
+    card=card[20:]
     if (card[0] == "a"): return 15
     if (card[0] == "7"): return 14
     if (card[0] == "r"): return 13
