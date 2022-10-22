@@ -1,8 +1,118 @@
 import cv2
 import numpy as np
 from threading import Thread
-from camera_calibration import calibrate_camera 
+from camera_calibration import calibrate_camera
+from projection import draw_trophy
 
+####### Compare 2 images of the same size
+
+def compute_similarity(image1, image2):
+
+    # Template matching:
+    '''
+    similarity = cv2.matchTemplate(image1,image2,cv2.TM_CCOEFF)
+    '''
+
+    # Feature matching:
+    '''
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(image1,image2,k=2)
+    good = []
+    for m,n in matches:
+        if m.distance < 0.75*n.distance:
+            good.append([m])
+    similarity = len(good) / len(matches)
+    '''
+
+    # Using norm():
+    '''
+    height1, width1 = image1.shape
+    errorL2 = cv2.norm( image1, image2, cv2.NORM_L2 ) 
+    similarity = 1 - errorL2 / ( height1 * width1 )
+    '''
+
+    # Using abs diff
+    
+    diff_img = cv2.absdiff(image1, image2)
+    diff = int(np.sum(diff_img)/255)
+    
+    # By pixel, too slow:
+    '''
+    rest = cv2.bitwise_xor(image1, image2)
+    height, width = image1.shape
+    pixels = height * width
+    diffs = 0
+    for x in range(width):
+        for y in range(height):
+            if rest[y, x] != 0:
+                diffs += 1
+
+    similarity = (pixels - diffs) / float(pixels)
+    '''
+
+    # Using SSIM
+    '''
+    similarity = ssim(image1,image2, channel_axis = False)  
+    '''
+
+    # Histogram
+    '''
+    histogram1 = cv2.calcHist([image1], [0], None, [256], [0, 256])
+    histogram2 = cv2.calcHist([image2], [0], None, [256], [0, 256])
+    i = 0
+    c1=0
+    while i<len(histogram1) and i<len(histogram2):
+        c1+=(histogram1[i]-histogram2[i])**2
+        i+= 1
+    similarity = c1**(1 / 2)
+    '''
+    return diff
+    
+####### Get the corners of a card through its countor 
+
+def get_corners(contour):
+    return cv2.approxPolyDP(contour, 0.1*cv2.arcLength(contour, True), True)
+    
+####### Binarize an image
+
+def binarize_image(original_image):
+    gray_scale_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+    img_w, img_h = np.shape(original_image)[:2]
+
+    bkg_level = gray_scale_image[int(img_h/100)][int(img_w/2)]
+    thresh_level = bkg_level + 100
+
+    _, binary_image = cv2.threshold(gray_scale_image, thresh_level, 255, cv2.THRESH_BINARY)
+    return binary_image
+
+#### Find the marker
+
+def find_marker(thresh_image, template):
+    height, width = template.shape[:2]
+    cnts,_ = cv2.findContours(thresh_image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    for i in range(len(cnts)):
+        peri = cv2.arcLength(cnts[i],True)
+        approx = cv2.approxPolyDP(cnts[i],0.01*peri,True)
+        if(len(approx)) == 4:
+            (x, y, w, h) = cv2.boundingRect(approx)
+            if  (0.5<=(float(w)/h)<=1.5):
+                corners = get_corners(cnts[i])
+
+                original = np.array(corners, np.float32)
+                dst = np.array([[0, 0], [0, height - 1], [width - 1, height - 1], [width - 1, 0]], np.float32)
+
+                if(len(original)==4):
+                    matrix = cv2.getPerspectiveTransform(original, dst)
+                else: return
+
+                marker_frontal_view = cv2.warpPerspective(thresh_image, matrix, (width, height)) # TODO: Falta rodar
+
+                similarity = compute_similarity(marker_frontal_view, template)
+                if similarity >= 51000:
+                    return corners
+
+    return []
+    
 class Webcam:
   
     def __init__(self):
@@ -117,13 +227,23 @@ effects = Effects()
 
    
 
+frame = cv2.imread('images/test_draw_trophy.png')
 #draw cube
+# # Pre-process marker image:
+marker = cv2.imread('images/marker.png')
+gray_scale_marker = cv2.cvtColor(marker, cv2.COLOR_BGR2GRAY)
+_, marker = cv2.threshold(gray_scale_marker, 100, 255, cv2.THRESH_BINARY)
+# Binarize frame
+binary_frame = binarize_image(frame)
 
+# Find and recognize marker
+marker_corners = find_marker(binary_frame,marker)
 # cap = cv2.VideoCapture(0)
 # while True:
-image = cv2.imread('images/chessboard_calibration/cali16.jpg')
-img3,img2=effects.render(image, 'team1')
-res=effects._merge_images(img3,img2)
+# img3,img2=effects.render(image, 'team1')
+# res=effects._merge_images(img3,img2)
+draw_trophy(frame, marker_corners, mtx, dist, 'teamchef')
+cv2.imshow('Sueca Game Assistant', frame)
 k = cv2.waitKey(0)
                     
 # show the scene

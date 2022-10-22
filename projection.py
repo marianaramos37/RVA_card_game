@@ -16,6 +16,7 @@ def draw_trophy(frame, corners, mtx, dist, winning_team): # esta é a matriz dos
     h, w = np.shape(frame)[:2]
     
     if(corners is not None and len(corners)==4):
+        print('hey')
         img_winner = cv.imread('images/trunfos.png')
         if (winning_team == 'team1'):
             img_winner = cv.imread('images/Team1Winner.png')
@@ -69,8 +70,9 @@ def draw_trophy(frame, corners, mtx, dist, winning_team): # esta é a matriz dos
         y = img_winner.shape[1]
 
         pts1=np.array([[x,y],[0,y],[x,0],[0,0]])
-        pts2=np.array([imgpts_cube[4], imgpts_cube[7], [imgpts_cube[4][0]+(imgpts_cube[4][0]-imgpts_cube[0][0]), imgpts_cube[4][1]-(imgpts_cube[0][1]-imgpts_cube[4][1])], [imgpts_cube[7][0]+(imgpts_cube[7][0]-imgpts_cube[3][0]), imgpts_cube[7][1]-(imgpts_cube[3][1]-imgpts_cube[7][1])]])
-        
+        pts2=np.array([imgpts_cube[2], imgpts_cube[3], imgpts_cube[6], imgpts_cube[7]])
+        #7 4
+        #3 0
         homography, _ = cv.findHomography(pts1, pts2, cv.RANSAC, 2.0)
         img_winner_warped = cv.warpPerspective(img_winner, homography, (640, 360))
         
