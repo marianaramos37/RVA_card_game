@@ -296,7 +296,6 @@ def main():
         
         # Find and recognize marker
         marker_corners = find_marker(binary_frame,marker)
-        draw_trophy(frame, marker_corners, cameraMatrix, dist)
 
         # Find cards
         cnts_sort, cnt_is_card = find_cards(binary_frame)
@@ -359,6 +358,7 @@ def main():
                     points_team_2 += points
                     new_round = False
             cv2.putText(frame,"Finished round",(20,65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
+            draw_trophy(frame, marker_corners, cameraMatrix, dist, winning_team)
         
 
         cv2.imshow('Sueca Game Assistant', frame)

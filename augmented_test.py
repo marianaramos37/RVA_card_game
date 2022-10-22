@@ -1,14 +1,8 @@
 import cv2
 import numpy as np
-import glob
 from threading import Thread
-
-
 from camera_calibration import calibrate_camera 
 
-
-
-  
 class Webcam:
   
     def __init__(self):
@@ -33,7 +27,7 @@ _, mtx, dist, _, _ = calibrate_camera()
 
 class Effects(object):
     
-    def render(self, image):
+    def render(self, image, winner):
   
         # set up criteria, object points and axis
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -57,11 +51,16 @@ class Effects(object):
 
             imgpts, _ = cv2.projectPoints(axis, rvecs, tvecs, mtx, dist)
   
+            if (winner == 'team1'):
+                img_winner = cv2.imread('images/Team1Winner.png')
+            else:
+                img_winner = cv2.imread('images/Team2Winner.png')
+                  
             # draw cube
-            imgage3,image2=self._draw_cube(image, imgpts)
+            imgage3,image2=self._draw_cube(image, imgpts, img_winner)
             return imgage3,image2
   
-    def _draw_cube(self, img, imgpts):
+    def _draw_cube(self, img, imgpts, img_winner):
         imgpts = np.int32(imgpts).reshape(-1,2)
   
         # draw floor
@@ -70,15 +69,18 @@ class Effects(object):
         # draw pillars
         for i,j in zip(range(4),range(4,8)):
             cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]),(255),3)
-        #0 4
-        #3 7
-
-        pts1=np.array([[403,390],[0,390],[403,0],[0,0]])
-        pts2=np.array([[imgpts[0]],[imgpts[3]],[imgpts[4]],[imgpts[7]]])
-        image2=cv2.imread('images/trunfos.png')
+        #7 4
+        #3 0
         
-        h, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC,2.0)
-        im1Reg = cv2.warpPerspective(image2, h, (640, 360))
+        x = img_winner.shape[0]
+        y = img_winner.shape[1]
+
+        pts1=np.array([[x,y],[0,y],[x,0],[0,0]])
+        pts2=np.array([imgpts[4], imgpts[7], [imgpts[4][0]+(imgpts[4][0]-imgpts[0][0]), imgpts[4][1]-(imgpts[0][1]-imgpts[4][1])], [imgpts[7][0]+(imgpts[7][0]-imgpts[3][0]), imgpts[7][1]-(imgpts[3][1]-imgpts[7][1])]])
+        print(pts1)
+        
+        h, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC, 2.0)
+        im1Reg = cv2.warpPerspective(img_winner, h, (640, 360))
         print(img.shape)
         
         # draw roof
@@ -90,7 +92,7 @@ class Effects(object):
         img1 = image1
         img2 = image2
         # I want to put logo on top-left corner, So I create a ROI
-        rows,cols,channels = img2.shape
+        rows,cols,_ = img2.shape
         roi = img1[0:rows, 0:cols]
         # Now create a mask of logo and create its inverse mask also
         img2gray = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
@@ -107,16 +109,7 @@ class Effects(object):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-
-
-
-
-
-
-
-
-
-# set up classe
+# set up class
 effects = Effects()
 
 
@@ -126,12 +119,12 @@ effects = Effects()
 
 #draw cube
 
-cap = cv2.VideoCapture(0)
-while True:
-    _, image = cap.read()
-    img3,img2=effects.render(image)
-    res=effects._merge_images(img3,img2)
-    k = cv2.waitKey(0)
+# cap = cv2.VideoCapture(0)
+# while True:
+image = cv2.imread('images/chessboard_calibration/cali16.jpg')
+img3,img2=effects.render(image, 'team1')
+res=effects._merge_images(img3,img2)
+k = cv2.waitKey(0)
                     
 # show the scene
 cv2.waitKey(100)
