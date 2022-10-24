@@ -360,8 +360,9 @@ def main():
                         cv2.drawContours(frame, cnts_sort, c, (255, 0, 0), 2)
 
                     cv2.putText(frame,original[20:][:-4],corners[0][0], cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.FONT_HERSHEY_SIMPLEX)
-                    
+
             if num_cards_on_table==1:
+                new_round = True
                 cv2.putText(frame,"You can start to play" + assistir,(20,h-35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.FONT_HERSHEY_SIMPLEX)
 
             if num_cards_on_table==2 and original != None:
@@ -372,6 +373,8 @@ def main():
             if num_cards_on_table==5:
                 if card_team1_player1 is not None and card_team1_player2 is not None and card_team2_player1 is not None and card_team2_player2 is not None:
                     winning_team, points = game_logic.load_game_logic(trunfo, assistir, card_team1_player1, card_team1_player2, card_team2_player1, card_team2_player2)
+                    print(winning_team)
+                    print(points)
                     if winning_team=="team1" and new_round==True:
                         points_team_1 += points
                         new_round = False
